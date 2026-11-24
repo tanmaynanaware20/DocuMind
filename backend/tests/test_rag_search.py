@@ -45,3 +45,18 @@ def test_synthesize_grounded_answer():
     assert citation.documentId == "doc_1"
     assert citation.page == 4
     assert citation.matchScore > 0.5
+
+def test_tunable_rrf_parameters():
+    chunks = [
+        {"document_id": "doc_1", "document_title": "Doc 1", "content": "limitation of liability clause details"},
+        {"document_id": "doc_2", "document_title": "Doc 2", "content": "general services terms"}
+    ]
+    # Dense-heavy search
+    res_dense = RAGService.search_chunks(chunks, "liability", dense_weight=0.9, sparse_weight=0.1, rrf_k=30)
+    assert len(res_dense) > 0
+    assert res_dense[0][0]["document_id"] == "doc_1"
+
+    # Sparse-heavy search
+    res_sparse = RAGService.search_chunks(chunks, "liability", dense_weight=0.1, sparse_weight=0.9, rrf_k=100)
+    assert len(res_sparse) > 0
+    assert res_sparse[0][0]["document_id"] == "doc_1"

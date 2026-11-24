@@ -44,36 +44,80 @@ class RAGService:
         chunks: List[Dict[str, Any]],
         query: str,
         search_type: str = "hybrid",
-        top_k: int = 5
+        top_k: int = 5,
+        dense_weight: float = 0.6,
+        sparse_weight: float = 0.4,
+        rrf_k: int = 60,
+        bm25_k1: float = 1.5,
+        bm25_b: float = 0.75
     ) -> List[Tuple[Dict[str, Any], float]]:
         """
-        Hybrid search combining Dense Cosine Similarity and Sparse Keyword Matching.
+        Tunable hybrid search combining Dense Cosine Similarity and Sparse BM25
+        with Reciprocal Rank Fusion (RRF).
         """
-        query_words = set(re.findall(r'\b\w{3,}\b', query.lower()))
+        stopwords = {"the", "is", "at", "which", "on", "a", "an", "and", "or", "what", "of", "to", "in", "for", "with", "this", "that"}
+        raw_words = re.findall(r'\b\w{3,}\b', query.lower())
+        query_words = set(w for w in raw_words if w not in stopwords)
+        if not query_words:
+            query_words = set(raw_words)
         query_vec = cls.compute_embedding(query)
 
-        scored_chunks = []
+        if not chunks:
+            return []
 
-        for chunk in chunks:
+        # Average document length in tokens for BM25 length normalization
+        avg_doc_len = sum(len(c.get("content", "").split()) for c in chunks) / max(1, len(chunks))
+
+        dense_ranked = []
+        sparse_ranked = []
+
+        for idx, chunk in enumerate(chunks):
             content = chunk.get("content", "").lower()
-            
+            words = content.split()
+            doc_len = len(words)
+
             # 1. Dense Semantic Score
             chunk_vec = chunk.get("embedding") or cls.compute_embedding(content)
-            dense_score = cls.cosine_similarity(query_vec, chunk_vec)
+            dense_sim = cls.cosine_similarity(query_vec, chunk_vec)
+            dense_ranked.append((idx, dense_sim))
 
-            # 2. Sparse Keyword Score
-            keyword_matches = sum(1 for w in query_words if w in content)
-            sparse_score = keyword_matches / max(1, len(query_words))
+            # 2. Sparse BM25 Term Frequency Saturation
+            tf_score = 0.0
+            for qw in query_words:
+                tf = content.count(qw)
+                if tf > 0:
+                    denom = tf + bm25_k1 * (1.0 - bm25_b + bm25_b * (doc_len / max(1.0, avg_doc_len)))
+                    tf_score += (tf * (bm25_k1 + 1.0)) / max(0.001, denom)
+            
+            sparse_ranked.append((idx, tf_score))
 
-            # 3. Hybrid Combined Score
+        # Sort ranks for RRF computation
+        dense_ranked.sort(key=lambda x: x[1], reverse=True)
+        sparse_ranked.sort(key=lambda x: x[1], reverse=True)
+
+        dense_rank_map = {item[0]: rank + 1 for rank, item in enumerate(dense_ranked)}
+        sparse_rank_map = {item[0]: rank + 1 for rank, item in enumerate(sparse_ranked)}
+
+        scored_chunks = []
+        for idx, chunk in enumerate(chunks):
+            dense_sim = next(s for i, s in dense_ranked if i == idx)
+            sparse_sim = next(s for i, s in sparse_ranked if i == idx)
+
             if search_type == "semantic":
-                final_score = dense_score
+                final_score = dense_sim
             elif search_type == "keyword":
-                final_score = sparse_score
+                final_score = sparse_sim
             else:
-                final_score = (dense_score * 0.6) + (sparse_score * 0.4)
+                # Reciprocal Rank Fusion formula: RRF_score = sum(weight / (k + rank))
+                r_dense = dense_rank_map[idx]
+                r_sparse = sparse_rank_map[idx]
+                rrf_dense = dense_weight / (rrf_k + r_dense)
+                rrf_sparse = sparse_weight / (rrf_k + r_sparse)
+                final_score = (dense_weight * dense_sim) + (sparse_weight * sparse_sim) + (rrf_dense + rrf_sparse) * 10.0
 
-            if final_score > 0.05 or keyword_matches > 0:
+            content = chunk.get("content", "").lower()
+            has_keyword = any(qw in content for qw in query_words)
+            if final_score > 0.01 or has_keyword:
                 scored_chunks.append((chunk, final_score))
 
         scored_chunks.sort(key=lambda x: x[1], reverse=True)
