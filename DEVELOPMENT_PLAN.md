@@ -6,7 +6,7 @@
 
 ## Architecture & Implementation Principles
 
-- **Small, High-Value Contributions**: Every daily run makes one focused, genuine improvement.
+- **Daily 5–6 Meaningful Contributions**: Each daily run delivers 5 to 6 small, high-value, parts-by-parts improvements.
 - **Zero Breaking Changes**: Never overwrite, delete, or break working functionality.
 - **Verification First**: All backend changes must pass `python -m pytest backend/tests` (100% pass) and all frontend changes must pass `npm run build` with zero errors before committing.
 - **Safe Version Control**: Never commit `.env` files, API keys, or private artifacts. Never force-push (`git push --force`).
