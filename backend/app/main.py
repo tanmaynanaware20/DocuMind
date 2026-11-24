@@ -23,6 +23,7 @@ from .schemas import (
     ComparisonRequest, ComparisonResponse, DashboardStatsResponse, ActivityLogSchema
 )
 from .security import hash_password, verify_password, create_access_token
+from .middleware.rate_limiter import RateLimiterMiddleware
 from .services.document_processor import DocumentProcessor
 from .services.extraction_service import ExtractionService
 from .services.rag_service import RAGService
@@ -45,6 +46,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimiterMiddleware, default_limit=120, window_seconds=60)
 
 # Upload directory
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "../uploads")
