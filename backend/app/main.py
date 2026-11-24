@@ -24,6 +24,7 @@ from .schemas import (
 )
 from .security import hash_password, verify_password, create_access_token
 from .middleware.rate_limiter import RateLimiterMiddleware
+from .exceptions import DocuMindException, rfc7807_exception_handler
 from .services.document_processor import DocumentProcessor
 from .services.extraction_service import ExtractionService
 from .services.rag_service import RAGService
@@ -47,6 +48,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(RateLimiterMiddleware, default_limit=120, window_seconds=60)
+app.add_exception_handler(DocuMindException, rfc7807_exception_handler)
 
 # Upload directory
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "../uploads")
