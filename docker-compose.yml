@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # Python FastAPI Backend Engine
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: documind-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://documind:documind_secret@postgres:5432/documind_db
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET=documind_production_jwt_secret_key_2026_change_in_prod
+      - ENVIRONMENT=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - documind_uploads:/app/backend/uploads
+      - documind_reports:/app/backend/reports
+    restart: unless-stopped
+
+  # React 19 + Vite Frontend SPA
+  frontend:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    container_name: documind-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # PostgreSQL Database with pgvector
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: documind-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=documind
+      - POSTGRES_PASSWORD=documind_secret
+      - POSTGRES_DB=documind_db
+    volumes:
+      - documind_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U documind -d documind_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis In-Memory Cache and Task Queue
+  redis:
+    image: redis:7-alpine
+    container_name: documind-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - documind_redisdata:/data
+    restart: unless-stopped
+
+volumes:
+  documind_pgdata:
+  documind_redisdata:
+  documind_uploads:
+  documind_reports:
