@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 
 // Common Layouts
 import { Navbar } from './components/common/Navbar';
@@ -63,8 +64,9 @@ export function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <Routes>
+        <ToastProvider>
+          <BrowserRouter>
+            <Routes>
             {/* Public Pages */}
             <Route path="/" element={<PublicLayout><LandingPage /></PublicLayout>} />
             <Route path="/features" element={<PublicLayout><FeaturesPage /></PublicLayout>} />
@@ -103,8 +105,9 @@ export function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
-      </AuthProvider>
-    </ThemeProvider>
+      </ToastProvider>
+    </AuthProvider>
+  </ThemeProvider>
   );
 }
 
