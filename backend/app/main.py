@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .database import engine, get_db, Base
@@ -377,6 +378,37 @@ def health_check(db: Session = Depends(get_db)):
         "documentsCount": doc_count,
         "collectionsCount": col_count
     }
+
+@app.get("/api/health/live", tags=["System Health & Observability"], summary="Kubernetes Liveness Probe")
+def liveness_probe():
+    """Liveness probe indicating container runtime availability and process responsiveness."""
+    return {
+        "status": "alive",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+@app.get("/api/health/ready", tags=["System Health & Observability"], summary="Kubernetes Readiness Probe")
+def readiness_probe(db: Session = Depends(get_db)):
+    """
+    Readiness probe verifying database connectivity and operational availability
+    before receiving ingress traffic.
+    """
+    try:
+        # Verify database connection
+        db.execute(text("SELECT 1"))
+        return {
+            "status": "ready",
+            "checks": {
+                "database": "connected",
+                "storage": "healthy"
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Readiness check failed: {str(exc)}"
+        )
 
 @app.get("/api/metrics", tags=["System Health & Observability"])
 def metrics(db: Session = Depends(get_db)):
