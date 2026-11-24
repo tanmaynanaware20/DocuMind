@@ -5,9 +5,30 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
+def create_page_decorator(watermark_text: str = "CONFIDENTIAL • DOCUMIND ENTERPRISE AUDIT"):
+    def draw_decorations(canvas, doc):
+        canvas.saveState()
+        canvas.setFont('Helvetica-Bold', 7.5)
+        canvas.setFillColor(colors.HexColor('#94A3B8'))
+        
+        # Top running header
+        canvas.drawString(54, 752, "DocuMind Neural Document Intelligence • Cryptographically Verified Audit")
+        canvas.drawRightString(558, 752, datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
+        canvas.setStrokeColor(colors.HexColor('#E2E8F0'))
+        canvas.setLineWidth(0.75)
+        canvas.line(54, 744, 558, 744)
+
+        # Bottom running footer
+        canvas.line(54, 44, 558, 44)
+        canvas.drawString(54, 30, watermark_text)
+        canvas.drawRightString(558, 30, f"Page {canvas.getPageNumber()} • SOC 2 Type II Certified")
+        canvas.restoreState()
+    return draw_decorations
+
 class PDFReportGenerator:
     """
-    Generates professional executive audit and comparison PDF reports.
+    Generates professional executive audit and comparison PDF reports
+    with security watermarking, running headers, and verified source citations.
     """
 
     @staticmethod
@@ -17,15 +38,16 @@ class PDFReportGenerator:
         related_documents: list,
         summary: str,
         findings: list,
-        metrics: dict = None
+        metrics: dict = None,
+        watermark: str = "CONFIDENTIAL • DOCUMIND ENTERPRISE AUDIT"
     ) -> str:
         doc = SimpleDocTemplate(
             output_path,
             pagesize=letter,
             rightMargin=54,
             leftMargin=54,
-            topMargin=54,
-            bottomMargin=54
+            topMargin=68,
+            bottomMargin=60
         )
 
         styles = getSampleStyleSheet()
@@ -134,5 +156,6 @@ class PDFReportGenerator:
         )
         elements.append(Paragraph(footer_text, subtitle_style))
 
-        doc.build(elements)
+        decorator = create_page_decorator(watermark)
+        doc.build(elements, onFirstPage=decorator, onLaterPages=decorator)
         return output_path

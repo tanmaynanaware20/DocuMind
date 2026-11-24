@@ -25,3 +25,16 @@ def test_generate_pdf_report(tmp_path):
 
     assert os.path.exists(path)
     assert os.path.getsize(path) > 1000
+
+def test_generate_pdf_report_with_custom_watermark(tmp_path):
+    output_pdf = os.path.join(tmp_path, "watermark_report.pdf")
+    path = PDFReportGenerator.generate_executive_report(
+        output_path=output_pdf,
+        title="Custom Watermark Audit",
+        related_documents=[{"title": "Doc A", "fileType": "pdf", "pageCount": 2, "status": "indexed"}],
+        summary="Audit summary.",
+        findings=["Finding 1"],
+        watermark="TOP SECRET • LEGAL PRIVILEGE"
+    )
+    assert os.path.exists(path)
+    assert os.path.getsize(path) > 1000
