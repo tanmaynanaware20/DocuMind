@@ -17,7 +17,7 @@
 
 ### Phase 1: Core Foundation & Processing Pipeline (Nov 24 – Nov 28)
 - [x] **Day 1 (Nov 24, 2026)**: Core Architecture Baseline, Multi-Format Parsers (PyMuPDF, docx, openpyxl, pandas), Hybrid RAG Engine, Pydantic Extraction, ReportLab PDF, React 19 Frontend, and 21 Pytest Suite.
-- [ ] **Day 2 (Nov 25, 2026)**: Advanced Chunking Strategy: Add sliding window overlap options and table boundary preservation in `document_processor.py`.
+- [x] **Day 2 (Nov 25, 2026)**: Advanced Chunking Strategy: Add sliding window overlap options and table boundary preservation in `document_processor.py`.
 - [ ] **Day 3 (Nov 26, 2026)**: API Rate Limiting & Request Throttling Middleware for LLM and parsing endpoints.
 - [ ] **Day 4 (Nov 27, 2026)**: Celery & Redis Background Task Framework: Asynchronous document ingestion queue scaffolding.
 - [ ] **Day 5 (Nov 28, 2026)**: Multi-Tenant RBAC Scoping: Organization-level access isolation rules in SQLAlchemy queries.

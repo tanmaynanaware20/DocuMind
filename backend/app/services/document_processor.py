@@ -112,9 +112,41 @@ class DocumentProcessor:
             return cls.extract_text(content_bytes)
 
     @staticmethod
-    def chunk_document(raw_text: str, pages: List[Dict[str, Any]], target_tokens: int = 512, overlap: int = 50) -> List[Dict[str, Any]]:
+    def is_table_content(text: str) -> bool:
         """
-        Semantic chunker preserving page numbers and paragraph context.
+        Detects if a paragraph or text block represents a structured table
+        (markdown pipe table, tab/CSV delimited, or DOCX [Table Row] format).
+        """
+        lines = [l.strip() for l in text.split('\n') if l.strip()]
+        if not lines:
+            return False
+        
+        table_indicators = 0
+        for line in lines:
+            if line.startswith('|') and line.endswith('|'):
+                table_indicators += 1
+            elif line.startswith('[Table Row]:'):
+                table_indicators += 1
+            elif ' | ' in line and len(line.split(' | ')) >= 3:
+                table_indicators += 1
+            elif '\t' in line and len(line.split('\t')) >= 3:
+                table_indicators += 1
+        
+        return table_indicators >= max(1, len(lines) // 2)
+
+    @classmethod
+    def chunk_document(
+        cls,
+        raw_text: str,
+        pages: List[Dict[str, Any]],
+        target_tokens: int = 512,
+        overlap: int = 50,
+        strategy: str = "table_aware",
+        preserve_tables: bool = True
+    ) -> List[Dict[str, Any]]:
+        """
+        Advanced layout-aware semantic and sliding-window chunker preserving
+        page numbers, paragraph context, and tabular structural integrity.
         """
         chunks = []
         chunk_idx = 0
@@ -127,25 +159,73 @@ class DocumentProcessor:
                 continue
 
             # Split on paragraph or newline boundaries
-            paragraphs = p_text.split('\n\n')
-            current_chunk_words = []
+            paragraphs = [p.strip() for p in p_text.split('\n\n') if p.strip()]
+            current_chunk_words: List[str] = []
+            has_table_in_chunk = False
 
             for para in paragraphs:
+                is_table = cls.is_table_content(para) if preserve_tables else False
                 words = para.split()
                 if not words:
                     continue
 
+                # If paragraph is a table and preserve_tables is True, treat as atomic if it fits
+                if is_table:
+                    # If existing buffer has content, flush it first to avoid mixing prose and tabular boundaries
+                    if current_chunk_words:
+                        chunk_text = " ".join(current_chunk_words)
+                        chunks.append({
+                            "chunk_index": chunk_idx,
+                            "page_number": p_num,
+                            "content": chunk_text,
+                            "token_count": len(current_chunk_words),
+                            "metadata": {
+                                "page_number": p_num,
+                                "is_table": has_table_in_chunk,
+                                "strategy": strategy,
+                                "has_overlap": len(current_chunk_words) > len(words)
+                            }
+                        })
+                        chunk_idx += 1
+                        current_chunk_words = []
+                        has_table_in_chunk = False
+
+                    # Emit table block with dedicated metadata
+                    chunks.append({
+                        "chunk_index": chunk_idx,
+                        "page_number": p_num,
+                        "content": para,
+                        "token_count": len(words),
+                        "metadata": {
+                            "page_number": p_num,
+                            "is_table": True,
+                            "strategy": strategy,
+                            "has_overlap": False
+                        }
+                    })
+                    chunk_idx += 1
+                    continue
+
+                # Standard semantic chunking with overlap
                 if len(current_chunk_words) + len(words) > target_tokens and current_chunk_words:
                     chunk_text = " ".join(current_chunk_words)
                     chunks.append({
                         "chunk_index": chunk_idx,
                         "page_number": p_num,
                         "content": chunk_text,
-                        "token_count": len(current_chunk_words)
+                        "token_count": len(current_chunk_words),
+                        "metadata": {
+                            "page_number": p_num,
+                            "is_table": has_table_in_chunk,
+                            "strategy": strategy,
+                            "has_overlap": True
+                        }
                     })
                     chunk_idx += 1
                     # retain overlap
-                    current_chunk_words = current_chunk_words[-overlap:] + words
+                    overlap_slice = current_chunk_words[-overlap:] if overlap > 0 else []
+                    current_chunk_words = overlap_slice + words
+                    has_table_in_chunk = False
                 else:
                     current_chunk_words.extend(words)
 
@@ -154,7 +234,13 @@ class DocumentProcessor:
                     "chunk_index": chunk_idx,
                     "page_number": p_num,
                     "content": " ".join(current_chunk_words),
-                    "token_count": len(current_chunk_words)
+                    "token_count": len(current_chunk_words),
+                    "metadata": {
+                        "page_number": p_num,
+                        "is_table": has_table_in_chunk,
+                        "strategy": strategy,
+                        "has_overlap": False
+                    }
                 })
                 chunk_idx += 1
 
