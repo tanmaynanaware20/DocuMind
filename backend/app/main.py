@@ -34,10 +34,56 @@ from .services.audit_verifier import AuditChainVerifier
 # Create all database tables
 Base.metadata.create_all(bind=engine)
 
+tags_metadata = [
+    {
+        "name": "System Health & Observability",
+        "description": "Health check probes and Prometheus `/metrics` telemetry exposition."
+    },
+    {
+        "name": "Authentication & RBAC",
+        "description": "JWT authentication, credential issuance, and user session lifecycle management."
+    },
+    {
+        "name": "Document Management & Parsing",
+        "description": "Multi-format ingestion (PyMuPDF, docx, openpyxl), semantic chunking, and metadata retrieval."
+    },
+    {
+        "name": "Neural RAG & Hybrid Retrieval",
+        "description": "Hybrid Dense + BM25 search with Reciprocal Rank Fusion and source attribution."
+    },
+    {
+        "name": "Contract Redline & Document Comparison",
+        "description": "Clause-level diffing, token alignment, and executive difference summarization."
+    },
+    {
+        "name": "Pydantic Structured Extraction",
+        "description": "Strict schema extraction for signatories, monetary caps, deadlines, and legal terms."
+    },
+    {
+        "name": "Reports & Audit Trails",
+        "description": "Cryptographically chained audit logs and publication-ready ReportLab PDF exports."
+    }
+]
+
 app = FastAPI(
     title="DocuMind API",
-    description="Enterprise Document Intelligence & Knowledge Management Platform",
-    version="3.0.0"
+    description=(
+        "Enterprise Document Intelligence & Knowledge Management Platform API.\n\n"
+        "Provides multi-format document ingestion (PDF, DOCX, XLSX, CSV, TXT), "
+        "hybrid dense-sparse retrieval with exact page citations, side-by-side redline comparisons, "
+        "and cryptographically verified SOC 2 Type II audit logging."
+    ),
+    version="3.0.0",
+    openapi_tags=tags_metadata,
+    contact={
+        "name": "DocuMind Enterprise Engineering",
+        "url": "https://github.com/tanmaynanaware20/DocuMind",
+        "email": "engineering@documind.io"
+    },
+    license_info={
+        "name": "Proprietary Enterprise SaaS",
+        "url": "https://github.com/tanmaynanaware20/DocuMind"
+    }
 )
 
 # CORS
@@ -319,7 +365,7 @@ def doc_to_response(doc: Document) -> dict:
 START_TIME = datetime.now(timezone.utc)
 
 # ----------------- Health Check -----------------
-@app.get("/api/health")
+@app.get("/api/health", tags=["System Health & Observability"])
 def health_check(db: Session = Depends(get_db)):
     doc_count = db.query(Document).count()
     col_count = db.query(Collection).count()
@@ -332,7 +378,7 @@ def health_check(db: Session = Depends(get_db)):
         "collectionsCount": col_count
     }
 
-@app.get("/api/metrics")
+@app.get("/api/metrics", tags=["System Health & Observability"])
 def metrics(db: Session = Depends(get_db)):
     doc_count = db.query(Document).count()
     total_pages = sum(d.page_count for d in db.query(Document).all())
