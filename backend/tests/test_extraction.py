@@ -24,3 +24,13 @@ def test_structured_information_extraction():
     assert len(res.important_dates) > 0 or len(res.deadlines) > 0
     # Critical clauses
     assert len(res.critical_clauses) > 0
+    # Confidence and metrics
+    assert 0.8 <= res.overall_confidence <= 1.0
+    assert res.extracted_fields_count > 0
+    assert "signatories" in res.field_confidences
+
+def test_extraction_missing_fields_confidence_penalty():
+    sparse_content = "Short note without any dates, dollar values, or signatories."
+    res = ExtractionService.extract_structured_data("doc_sparse", "Note", sparse_content)
+    assert res.overall_confidence < 0.90
+    assert len(res.missing_critical_fields) >= 2

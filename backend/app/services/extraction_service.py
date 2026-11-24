@@ -67,6 +67,33 @@ class ExtractionService:
             if term.lower() in text.lower():
                 contract_terms.append(term)
 
+        # 8. Calculate Completeness & Confidence Metrics
+        missing_critical = []
+        if not monetary_values:
+            missing_critical.append("monetary_values")
+        if not important_dates and not deadlines:
+            missing_critical.append("effective_dates_or_deadlines")
+        if not payment_conditions:
+            missing_critical.append("payment_conditions")
+        if not contract_terms:
+            missing_critical.append("governing_terms")
+
+        extracted_count = (
+            len(person_matches) + len(org_matches) + len(important_dates) +
+            len(deadlines) + len(monetary_values) + len(contract_terms) +
+            len(critical_clauses) + (1 if payment_conditions else 0)
+        )
+
+        confidence_score = max(0.50, round(1.0 - (len(missing_critical) * 0.12), 2))
+        field_confidences = {
+            "signatories": 0.95 if person_matches else 0.50,
+            "organizations": 0.94 if org_matches else 0.50,
+            "monetary_values": 0.97 if monetary_values else 0.0,
+            "dates_and_deadlines": 0.92 if (important_dates or deadlines) else 0.0,
+            "contract_terms": 0.96 if contract_terms else 0.0,
+            "critical_clauses": 0.93 if critical_clauses else 0.0
+        }
+
         return StructuredExtractionResult(
             document_id=document_id,
             document_title=document_title,
@@ -77,5 +104,9 @@ class ExtractionService:
             monetary_values=monetary_values,
             contract_terms=contract_terms,
             payment_conditions=payment_conditions,
-            critical_clauses=critical_clauses
+            critical_clauses=critical_clauses,
+            overall_confidence=confidence_score,
+            extracted_fields_count=extracted_count,
+            missing_critical_fields=missing_critical,
+            field_confidences=field_confidences
         )

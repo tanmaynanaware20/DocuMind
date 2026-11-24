@@ -99,6 +99,10 @@ class StructuredExtractionResult(BaseModel):
     payment_conditions: Optional[str] = None
     invoice_details: Optional[Dict[str, Any]] = None
     critical_clauses: List[Dict[str, str]] = []
+    overall_confidence: float = 0.95
+    extracted_fields_count: int = 0
+    missing_critical_fields: List[str] = []
+    field_confidences: Dict[str, float] = {}
 
 # ----------------- Collection Schemas -----------------
 class CollectionCreateRequest(BaseModel):
