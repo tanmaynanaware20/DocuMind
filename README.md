@@ -184,6 +184,18 @@ docker-compose up --build -d
 | `GET` | `/api/reports/pdf` | Download ReportLab executive audit PDF |
 | `GET` | `/api/reports/export?format=csv` | Export immutable activity audit trail |
 
+| `GET` | `/api/health/live` | Kubernetes container liveness probe |
+| `GET` | `/api/health/ready` | Kubernetes deep database readiness probe |
+| `GET` | `/api/metrics` | Prometheus telemetry and latency percentiles |
+
+---
+
+## Architecture & Production Documentation
+
+- **[Security & Compliance Matrix](file:///d:/Project/DocuMind/docs/SECURITY_AUDIT.md)**: SOC2 Type II, HIPAA ePHI, GDPR, and OWASP API Top 10 mitigations.
+- **[Production Deployment Runbook](file:///d:/Project/DocuMind/docs/DEPLOYMENT_RUNBOOK.md)**: Docker Compose, Kubernetes Helm charts, and disaster recovery.
+- **[19-Day Engineering Roadmap](file:///d:/Project/DocuMind/DEVELOPMENT_PLAN.md)**: Continuous, production-grade daily enhancements.
+
 ---
 
 ## License
